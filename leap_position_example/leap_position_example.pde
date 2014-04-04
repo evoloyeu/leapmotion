@@ -1,25 +1,3 @@
-/*
-
-    Leap Motion library for Processing.
-    Copyright (c) 2012-2013 held jointly by the individual authors.
-
-    This file is part of Leap Motion library for Processing.
-
-    Leap Motion library for Processing is free software: you can redistribute it and/or
-    modify it under the terms of the GNU General Public License as published by
-    the Free Software Foundation, either version 3 of the License, or
-    (at your option) any later version.
-
-    Leap Motion library for Processing is distributed in the hope that it will be
-    useful, but WITHOUT ANY WARRANTY; without even the implied warranty of
-    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-    GNU General Public License for more details.
-
-    You should have received a copy of the GNU General Public License
-    along with Leap Motion library for Processing.  If not, see
-    <http://www.gnu.org/licenses/>.
-
-*/
 import java.util.Map;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.ConcurrentHashMap;
@@ -39,12 +17,19 @@ ConcurrentMap<Integer, Integer> toolColors;
 ConcurrentMap<Integer, Vector> fingerPositions;
 ConcurrentMap<Integer, Vector> toolPositions;
 
+PFont font;
+boolean started = false;
+String prefix = "Input filename here:";
+String typedText = "";
+PrintWriter output;
+
 void setup()
 {
   size(16*50, 9*50);
   background(20);
-  frameRate(60);
+  frameRate(30);
   ellipseMode(CENTER);
+  font = createFont("Helvetica", 18);
 
   leapMotion = new LeapMotion(this);
   fingerColors = new ConcurrentHashMap<Integer, Integer>();
@@ -55,30 +40,59 @@ void setup()
 
 void draw()
 {
-  fill(20);
-  rect(0, 0, width, height);
-
-  for (Map.Entry entry : fingerPositions.entrySet())
+  background(255);
+  fill(255,0,0);
+  textFont(font,18);  
+  text(prefix+typedText, 10, height-10);
+ 
+  if (started)
   {
-    Integer fingerId = (Integer) entry.getKey();
-    Vector position = (Vector) entry.getValue();
-    fill(fingerColors.get(fingerId));
-    noStroke();
-    ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
-  }
-  for (Map.Entry entry : toolPositions.entrySet())
-  {
-    Integer toolId = (Integer) entry.getKey();
-    Vector position = (Vector) entry.getValue();
-    fill(toolColors.get(toolId));
-    noStroke();
-    ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
+    fill(20);
+    rect(0, 0, width, height);
+    StringBuilder fingerPosStrings = new StringBuilder();
+    for (Map.Entry entry : fingerPositions.entrySet())
+    {
+      Integer fingerId = (Integer) entry.getKey();
+      Vector position = (Vector) entry.getValue();
+      fill(fingerColors.get(fingerId));
+      noStroke();
+      ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
+      
+      fingerPosStrings.append("fx:" + position.getX()+ "\tfy:" +position.getY()+"\n");
+    }
+    
+    StringBuilder toolPosStrings = new StringBuilder();
+    for (Map.Entry entry : toolPositions.entrySet())
+    {
+      Integer toolId = (Integer) entry.getKey();
+      Vector position = (Vector) entry.getValue();
+      fill(toolColors.get(toolId));
+      noStroke();
+      ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
+      
+      toolPosStrings.append("tx:" + position.getX()+ "\tty:" +position.getY()+"\n");
+    }
+//    println("fingerPosStrings:"+fingerPosStrings.length());
+//    println("toolPosStrings:"+toolPosStrings.length());
+    
+    if (fingerPosStrings.length() > 0)
+    {
+      fingerPosStrings.append("****************");
+      output.println(fingerPosStrings);
+    }
+    
+    if (toolPosStrings.length()> 0)
+    {
+      output.println(toolPosStrings);
+    }
+    
   }
 }
 
 void onFrame(final Controller controller)
-{
+{ 
   Frame frame = controller.frame();
+  fingerPositions.clear();
   for (Finger finger : frame.fingers())
   {
     int fingerId = finger.id();
@@ -86,6 +100,7 @@ void onFrame(final Controller controller)
     fingerColors.putIfAbsent(fingerId, c);
     fingerPositions.put(fingerId, finger.tipPosition());
   }
+  toolPositions.clear();
   for (Tool tool : frame.tools())
   {
     int toolId = tool.id();
@@ -93,7 +108,36 @@ void onFrame(final Controller controller)
     toolColors.putIfAbsent(toolId, c);
     toolPositions.put(toolId, tool.tipPosition());
   }
-
-  // todo:  clean up expired finger/toolIds
 }
 
+void keyReleased() {
+  if (key != CODED) {
+    switch(key) {
+    case BACKSPACE:
+    case DELETE:
+      typedText = typedText.substring(0,max(0,typedText.length()-1));
+      break;
+    case TAB:
+    case ' ':
+    case ESC:
+      break;
+    case ENTER:
+    case RETURN:
+//      println("typedText.length:"+typedText.length());
+      if (typedText.length() > 0)
+      {
+        if (!started)//create file
+        {
+          output = createWriter(typedText);          
+        }else {
+          output.close();
+          typedText = "";
+        }
+        started = started ? false:true;
+      }
+      break;
+    default:
+      typedText += key;
+    }
+  }
+}
