@@ -17,15 +17,25 @@ ConcurrentMap<Integer, Integer> toolColors;
 ConcurrentMap<Integer, Vector> fingerPositions;
 ConcurrentMap<Integer, Vector> toolPositions;
 
+
 PFont font;
 boolean started = false;
 String prefix = "Input filename here:";
+String hintTxt = prefix;
+String promptTxt = "Press ENTER or Return to start record: ";
 String typedText = "";
+String fbase = "";
+String extension = "";
+String filename = "";
 PrintWriter output;
+
+Integer motionCount = 0;
+Integer hitCount = 0;
 
 void setup()
 {
   size(16*50, 9*50);
+  //  size(16*50, 9*50, P3D);
   background(20);
   frameRate(30);
   ellipseMode(CENTER);
@@ -41,12 +51,13 @@ void setup()
 void draw()
 {
   background(255);
-  fill(255,0,0);
-  textFont(font,18);  
-  text(prefix+typedText, 10, height-10);
- 
-  if (started)
+  if (!started)
   {
+    fill(255, 0, 0);
+    textFont(font, 18);  
+    text(hintTxt, 10, height-10);
+
+  } else {
     fill(20);
     rect(0, 0, width, height);
     StringBuilder fingerPosStrings = new StringBuilder();
@@ -56,11 +67,12 @@ void draw()
       Vector position = (Vector) entry.getValue();
       fill(fingerColors.get(fingerId));
       noStroke();
-      ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 54.0, 54.0);
-      
-      fingerPosStrings.append("fx:" + position.getX()+ "\tfy:" +position.getY()+"\n");
-    }
-    
+      ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
+
+      println("x:"+position.getX() + "\ty:"+position.getY() + "\tz:"+position.getZ());      
+      fingerPosStrings.append("fx:" + position.getX()+ "\tfy:" +position.getY()+ "\tfz:" +position.getZ()+"\n");
+    }    
+
     StringBuilder toolPosStrings = new StringBuilder();
     for (Map.Entry entry : toolPositions.entrySet())
     {
@@ -69,28 +81,26 @@ void draw()
       fill(toolColors.get(toolId));
       noStroke();
       ellipse(leapMotion.leapToSketchX(position.getX()), leapMotion.leapToSketchY(position.getY()), 24.0, 24.0);
-      
+
       toolPosStrings.append("tx:" + position.getX()+ "\tty:" +position.getY()+"\n");
     }
-//    println("fingerPosStrings:"+fingerPosStrings.length());
-//    println("toolPosStrings:"+toolPosStrings.length());
-    
+
     if (fingerPosStrings.length() > 0)
     {
-      fingerPosStrings.append("****************");
+      fingerPosStrings.append("****************frame seperator****************");
       output.println(fingerPosStrings);
     }
-    
+
     if (toolPosStrings.length()> 0)
     {
+      fingerPosStrings.append("****************frame seperator****************");
       output.println(toolPosStrings);
     }
-    
   }
 }
 
 void onFrame(final Controller controller)
-{ 
+{
   Frame frame = controller.frame();
   fingerPositions.clear();
   for (Finger finger : frame.fingers())
@@ -115,30 +125,75 @@ void keyReleased() {
     switch(key) {
     case BACKSPACE:
     case DELETE:
-      typedText = typedText.substring(0,max(0,typedText.length()-1));
+      typedText = typedText.substring(0, max(0, typedText.length()-1));
       break;
-//    case TAB:
-    case ' ':
+      //    case TAB:    
     case ESC:
       break;
     case ENTER:
     case RETURN:
     case TAB:
-//      println("typedText.length:"+typedText.length());
-      if (typedText.length() > 0)
       {
-        if (!started)//create file
-        {
-          output = createWriter(typedText);          
-        }else {
-          output.close();
-          typedText = "";
+        if (initVariables(typedText))
+        {          
+          started = true;
+          hitCount = 0;
         }
-        started = started ? false:true;
+        
+        typedText = "";
+        
+        hitCount++;
+        if (hitCount <= motionCount*2)
+        {          
+          if (hitCount%2 == 1)
+          {
+            filename = fbase+(hitCount/2+1)+"."+extension;
+            println("filename:"+filename);
+            output = createWriter(filename);
+            started = true;
+          } else {
+            output.close();
+            started = false;
+            if (hitCount == motionCount*2)
+            {
+              hintTxt = prefix;
+              motionCount = 0;
+            } else {
+              hintTxt = promptTxt+fbase+(hitCount/2+1)+"."+extension;
+            }
+          }
+        } else {//hitCount >= motionCount
+          started = false;
+          hintTxt = prefix;
+        }        
       }
       break;
     default:
       typedText += key;
+      hintTxt = prefix+typedText;
     }
   }
 }
+
+boolean initVariables(String input)
+{
+  if (input.length() > 0)
+  {
+    String []elements = input.split("\\s+");
+    if (elements.length == 2)
+    {
+      motionCount = Integer.parseInt(elements[1]);
+      String []components = elements[0].split("\\.");
+      if (components.length == 2)
+      {
+        fbase = components[0];
+        extension = components[1];
+        println("fbase:"+fbase+"\textension:"+extension+"\tmotionCount:"+motionCount);
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
