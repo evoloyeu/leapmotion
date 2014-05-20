@@ -35,7 +35,7 @@ Integer hitCount = 0;
 
 void setup()
 {
-  size(16*50, 9*50);
+  size(25*50, 15*50);
   //  size(16*50, 9*50, P3D);
   background(20);
   frameRate(30);
@@ -90,11 +90,11 @@ void draw()
         output.println(fingerPosStrings);
     }
 
-    if (toolPosStrings.length()> 0 && started)
-    {
-        fingerPosStrings.append("****************frame seperator****************");
-        output.println(toolPosStrings);
-    }
+//    if (toolPosStrings.length()> 0 && started)
+//    {
+//        fingerPosStrings.append("****************frame seperator****************");
+//        output.println(toolPosStrings);
+//    }
 }
 
 void onFrame(final Controller controller)
