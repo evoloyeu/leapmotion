@@ -8,9 +8,16 @@ def parser2(filename):
 	fbname = filename.split('.')[0]
 	pfile = open("../"+fbname+".txt", "w")
 	pFre = open("../statistics/"+fbname+"Stat.txt", "w")
-	csvFp = csv.writer(open("../"+fbname+".csv", 'w'))
+	csvFp = csv.writer(open("../"+fbname+".csv", 'w'))	
+
 	freqency = [0,0,0,0,0]
 	rowlines = []
+	xsi = []
+	ysi = []
+	zsi = []
+	xso = []
+	yso = []
+	zso = []
 
 	for line in raw:
 		if len(line) > 2:
@@ -37,12 +44,25 @@ def parser2(filename):
 			 	# print x+" "+y+" "+z
 			 	pfile.write(x+" "+y+" "+z)
 			 	csvFp.writerow([x,y,z])
+			 	xsi.append(x)
+			 	ysi.append(y)
+			 	zsi.append(z)
 
 	raw.close()
 	pfile.close()
 	pFre.write(', '.join(map(str, freqency)))
 	print freqency
 	pFre.close()
+
+	for x in xrange(50):
+		xsi = triangularSmoothing(xsi)
+		ysi = triangularSmoothing(ysi)
+		zsi = triangularSmoothing(zsi)
+	if len(xsi) == len(ysi) and len(xsi) == len(zsi):
+		fpTriangular = csv.writer(open("../triangular/"+fbname+".csv", 'w'))
+		for x in range(len(xsi)):
+			fpTriangular.writerow([xsi[x],ysi[x],zsi[x]])
+
 
 def parser(filename):
 	raw = open(filename)
@@ -71,11 +91,38 @@ def scanFiles(directory):
 
 	return fList
 
+def triangularSmoothing(inputArr):
+	pointCnt = len(inputArr)
+	if pointCnt < 5:
+		return []
+
+	output = []
+	output.append((3*float(inputArr[0])+2*float(inputArr[1])+float(inputArr[2]))/6.0)
+	output.append((2*float(inputArr[0])+3*float(inputArr[1])+2*float(inputArr[2])+float(inputArr[3]))/6.0)
+	for x in range(2,pointCnt-2):
+		output.append((float(inputArr[x-2])+2*float(inputArr[x-1])+3*float(inputArr[x])+2*float(inputArr[x+1])+float(inputArr[x+2]))/9.0)
+
+	output.append((float(inputArr[pointCnt-4])+2*float(inputArr[pointCnt-3])+3*float(inputArr[pointCnt-2])+2*float(inputArr[pointCnt-1]))/8.0)
+	output.append((float(inputArr[pointCnt-3])+2*float(inputArr[pointCnt-2])+3*float(inputArr[pointCnt-1]))/6.0)
+
+	print output
+	return output
+
+def test(inp):
+	inp = inp + 1
+	print "inp:", inp
+
 def main():
 	# parser(sys.argv[1])
 	fList = scanFiles(sys.argv[1])
 	for filename in fList:
 		parser2(filename)
+	# inp = [1,2,3,4,5]
+	# for x in xrange(0,10):
+	# 	inp = triangularSmoothing(inp)
+	# print "out inp:",inp
+
+
 
 if __name__ == '__main__':
 	main()
